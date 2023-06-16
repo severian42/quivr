@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { useSupabase } from "@/lib/context/SupabaseProvider";
-import { useAxios } from "@/lib/hooks";
-import { useToast } from "@/lib/hooks/useToast";
+import { useAxios, useToast } from "@/lib/hooks";
 
 import { isValidUrl } from "../helpers/isValidUrl";
 
