@@ -40,17 +40,17 @@ const RootLayout = async ({
         className={`bg-white text-black min-h-screen flex flex-col dark:bg-black dark:text-white w-full ${inter.className}`}
       >
         <FeatureFlagsProvider>
-        <ToastProvider>
-          <SupabaseProvider session={session}>
-            <BrainConfigProvider>
-              <BrainProvider>
-                <NavBar />
-                <div className="flex-1">{children}</div>
-                <Footer />
-              </BrainProvider>
-            </BrainConfigProvider>
-          </SupabaseProvider>
-        </ToastProvider>
+          <ToastProvider>
+            <SupabaseProvider session={session}>
+              <BrainConfigProvider>
+                <BrainProvider>
+                  <NavBar />
+                  <div className="flex-1">{children}</div>
+                  <Footer />
+                </BrainProvider>
+              </BrainConfigProvider>
+            </SupabaseProvider>
+          </ToastProvider>
           <Analytics />
         </FeatureFlagsProvider>
       </body>
