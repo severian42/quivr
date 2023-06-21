@@ -21,7 +21,6 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- Create vectors table
 CREATE TABLE IF NOT EXISTS vectors (
     id BIGSERIAL PRIMARY KEY,
-    user_id TEXT,
     content TEXT,
     metadata JSONB,
     embedding VECTOR(1536)
@@ -129,6 +128,7 @@ CREATE TABLE IF NOT EXISTS brains_users (
   brain_id UUID,
   user_id UUID,
   rights VARCHAR(255),
+  default_brain BOOLEAN DEFAULT false,
   PRIMARY KEY (brain_id, user_id),
   FOREIGN KEY (user_id) REFERENCES Users(user_id),
   FOREIGN KEY (brain_id) REFERENCES Brains(brain_id)
@@ -138,7 +138,6 @@ CREATE TABLE IF NOT EXISTS brains_users (
 CREATE TABLE IF NOT EXISTS brains_vectors (
   brain_id UUID,
   vector_id BIGSERIAL,
-  rights VARCHAR(255),
   PRIMARY KEY (brain_id, vector_id),
   FOREIGN KEY (vector_id) REFERENCES vectors(id),
   FOREIGN KEY (brain_id) REFERENCES brains(brain_id)
