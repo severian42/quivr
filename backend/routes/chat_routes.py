@@ -1,17 +1,17 @@
 import os
 import time
+from http.client import HTTPException
 from uuid import UUID
+
 from auth.auth_bearer import AuthBearer, get_current_user
 from fastapi import APIRouter, Depends, Request
 from llm.brainpicking import BrainPicking
-from models.chats import ChatMessage, ChatAttributes
+from models.chats import ChatAttributes, ChatMessage
 from models.settings import CommonsDep, common_dependencies
 from models.users import User
 from utils.chats import (create_chat, get_chat_name_from_first_question,
                          update_chat)
-from utils.users import (create_user, fetch_user_id_from_credentials,
-                         update_user_request_count)
-from http.client import HTTPException
+from utils.users import create_user, update_user_request_count
 
 chat_router = APIRouter()
 
@@ -68,8 +68,7 @@ async def get_chats(current_user: User = Depends(get_current_user)):
     containing the chat ID and chat name for each chat.
     """
     commons = common_dependencies()
-    user_id = fetch_user_id_from_credentials(commons, {"email": current_user.email})
-    chats = get_user_chats(commons, user_id)
+    chats = get_user_chats(commons, current_user.id)
     return {"chats": chats}
 
 
@@ -105,9 +104,8 @@ async def delete_chat(chat_id: UUID):
 
 
 # helper method for update and create chat
-def chat_handler(request, commons, chat_id, chat_message, email, is_new_chat=False):
+def chat_handler(request, commons, chat_id, chat_message, user:User, is_new_chat=False):
     date = time.strftime("%Y%m%d")
-    user_id = fetch_user_id_from_credentials(commons, {"email": email})
     max_requests_number = os.getenv("MAX_REQUESTS_NUMBER")
     user_openai_api_key = request.headers.get("Openai-Api-Key")
 
@@ -120,10 +118,10 @@ def chat_handler(request, commons, chat_id, chat_message, email, is_new_chat=Fal
     chat_name = chat_message.chat_name
 
     if old_request_count == 0:
-        create_user(commons, email=email, date=date)
+        create_user(commons, user, date=date)
     else:
         update_user_request_count(
-            commons, email, date, requests_count=old_request_count + 1
+            commons, user, date, requests_count=old_request_count + 1
         )
     if user_openai_api_key is None and old_request_count >= float(max_requests_number):
         history.append(("assistant", "You have reached your requests limit"))
@@ -136,7 +134,7 @@ def chat_handler(request, commons, chat_id, chat_message, email, is_new_chat=Fal
 
     if is_new_chat:
         chat_name = get_chat_name_from_first_question(chat_message)
-        new_chat = create_chat(commons, user_id, history, chat_name)
+        new_chat = create_chat(commons, user.id, history, chat_name)
         chat_id = new_chat.data[0]["chat_id"]
     else:
         update_chat(commons, chat_id=chat_id, history=history, chat_name=chat_name)
@@ -156,7 +154,7 @@ async def chat_endpoint(
     """
     Update an existing chat with new chat messages.
     """
-    return chat_handler(request, commons, chat_id, chat_message, current_user.email)
+    return chat_handler(request, commons, chat_id, chat_message, current_user)
 
 
 # update existing chat
@@ -171,9 +169,8 @@ async def update_chat_attributes_handler(
     Update chat attributes
     """
 
-    user_id = fetch_user_id_from_credentials(commons, {"email": current_user.email})
     chat = get_chat_details(commons, chat_id)[0]
-    if user_id != chat.get('user_id'):
+    if current_user.id != chat.get('user_id'):
         raise HTTPException(status_code=403, detail="Chat not owned by user")
     return update_chat(commons=commons, chat_id=chat_id, chat_name=chat_message.chat_name)
 
@@ -190,5 +187,5 @@ async def create_chat_handler(
     Create a new chat with initial chat messages.
     """
     return chat_handler(
-        request, commons, None, chat_message, current_user.email, is_new_chat=True
+        request, commons, None, chat_message, current_user, is_new_chat=True
     )

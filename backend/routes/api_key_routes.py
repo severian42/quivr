@@ -11,7 +11,6 @@ from logger import get_logger
 from models.settings import CommonsDep
 from models.users import User
 from pydantic import BaseModel
-from utils.users import fetch_user_id_from_credentials
 
 logger = get_logger(__name__)
 
@@ -38,8 +37,6 @@ async def create_api_key(commons: CommonsDep, current_user: User = Depends(get_c
     the user. It returns the newly created API key.
     """
 
-    user_id = fetch_user_id_from_credentials(commons, {"email": current_user.email})
-
     new_key_id = str(uuid4())
     new_api_key = token_hex(16)
     api_key_inserted = False
@@ -49,7 +46,7 @@ async def create_api_key(commons: CommonsDep, current_user: User = Depends(get_c
             # Attempt to insert new API key into database
             commons['supabase'].table('api_keys').insert([{
                 "key_id": new_key_id,
-                "user_id": user_id,
+                "user_id": current_user.id,
                 "api_key": new_api_key,
                 "creation_time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
                 "is_active": True
@@ -80,7 +77,7 @@ async def delete_api_key(key_id: str, commons: CommonsDep, current_user: User = 
     commons['supabase'].table('api_keys').update({
         "is_active": False,
         "deleted_time": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    }).match({"key_id": key_id, "user_id": current_user.user_id}).execute()
+    }).match({"key_id": key_id, "user_id": current_user.id}).execute()
 
     return {"message": "API key deleted."}
 
@@ -96,7 +93,5 @@ async def get_api_keys(commons: CommonsDep, current_user: User = Depends(get_cur
     containing the key ID and creation time for each API key.
     """
 
-    user_id = fetch_user_id_from_credentials(commons, {"email": current_user.email})
-
-    response = commons['supabase'].table('api_keys').select("key_id, creation_time").filter('user_id', 'eq', user_id).filter('is_active', 'eq', True).execute()
+    response = commons['supabase'].table('api_keys').select("key_id, creation_time").filter('user_id', 'eq', current_user.id).filter('is_active', 'eq', True).execute()
     return response.data
